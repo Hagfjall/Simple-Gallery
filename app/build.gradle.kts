@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.exif)
     implementation(libs.android.gif.drawable)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.composeruntime)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.sdk.panowidget)
     implementation(libs.sdk.videowidget)

@@ -18,12 +18,14 @@ import com.simplemobiletools.gallery.pro.extensions.*
 import com.simplemobiletools.gallery.pro.models.Medium
 import com.simplemobiletools.gallery.pro.models.ThumbnailItem
 import com.simplemobiletools.gallery.pro.models.ThumbnailSection
+import se.hagfjall.photosorganizer.mediaRenamer.IMediaService
 import java.io.File
 import java.util.Calendar
 import java.util.Locale
 
 class MediaFetcher(val context: Context) {
     var shouldStop = false
+    val _mediaService: IMediaService = se.hagfjall.photosorganizer.mediaRenamer.MediaService()
 
     // on Android 11 we fetch all files at once from MediaStore and have it split by folder, use it if available
     fun getFilesFrom(
@@ -417,7 +419,23 @@ class MediaFetcher(val context: Context) {
                 }
 
                 val isFavorite = favoritePaths.contains(path)
-                val medium = Medium(null, filename, path, file.parent, lastModified, dateTaken, size, type, videoDuration, isFavorite, 0L, 0L)
+                val gpsCoordinates = _mediaService.getGpsData(path)
+                val medium = Medium(
+                    null,
+                    filename,
+                    path,
+                    file.parent,
+                    lastModified,
+                    dateTaken,
+                    gpsCoordinates?.latitude ?: 0.0,
+                    gpsCoordinates?.longitude ?: 0.0,
+                    size,
+                    type,
+                    videoDuration,
+                    isFavorite,
+                    0L,
+                    0L
+                )
                 media.add(medium)
             }
         }
@@ -522,8 +540,24 @@ class MediaFetcher(val context: Context) {
 
                 val videoDuration = Math.round(cursor.getIntValue(MediaStore.MediaColumns.DURATION) / 1000.toDouble()).toInt()
                 val isFavorite = favoritePaths.contains(path)
-                val medium =
-                    Medium(null, filename, path, path.getParentPath(), lastModified, dateTaken, size, type, videoDuration, isFavorite, 0L, mediaStoreId)
+                val gpsCoordinates = _mediaService.getGpsData(path)
+
+                val medium = Medium(
+                    null,
+                    filename,
+                    path,
+                    path.getParentPath(),
+                    lastModified,
+                    dateTaken,
+                    gpsCoordinates?.latitude ?: 0.0,
+                    gpsCoordinates?.longitude ?: 0.0,
+                    size,
+                    type,
+                    videoDuration,
+                    isFavorite,
+                    0L,
+                    mediaStoreId
+                )
                 val parent = medium.parentPath.lowercase(Locale.getDefault())
                 val currentFolderMedia = media[parent]
                 if (currentFolderMedia == null) {
@@ -601,7 +635,23 @@ class MediaFetcher(val context: Context) {
             )
             val videoDuration = if (getVideoDurations) context.getDuration(path) ?: 0 else 0
             val isFavorite = favoritePaths.contains(path)
-            val medium = Medium(null, filename, path, folder, dateModified, dateTaken, size, type, videoDuration, isFavorite, 0L, 0L)
+            val gpsCoordinates = _mediaService.getGpsData(path)
+            val medium = Medium(
+                null,
+                filename,
+                path,
+                folder,
+                dateModified,
+                dateTaken,
+                gpsCoordinates?.latitude ?: 0.0,
+                gpsCoordinates?.longitude ?: 0.0,
+                size,
+                type,
+                videoDuration,
+                isFavorite,
+                0L,
+                0L
+            )
             media.add(medium)
         }
 

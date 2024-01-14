@@ -22,6 +22,8 @@ import com.simplemobiletools.gallery.pro.fragments.VideoFragment
 import com.simplemobiletools.gallery.pro.fragments.ViewPagerFragment
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.models.Medium
+import se.hagfjall.photosorganizer.mediaRenamer.IMediaService
+import se.hagfjall.photosorganizer.mediaRenamer.MediaService
 import java.io.File
 import java.io.FileInputStream
 
@@ -31,6 +33,7 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
     private var mIsFromGallery = false
     private var mFragment: ViewPagerFragment? = null
     private var mUri: Uri? = null
+    private val _mediaService : IMediaService = MediaService()
 
     var mIsVideo = false
 
@@ -222,7 +225,23 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         }
 
         mIsVideo = type == TYPE_VIDEOS
-        mMedium = Medium(null, filename, mUri.toString(), mUri!!.path!!.getParentPath(), 0, 0, file.length(), type, 0, false, 0L, 0)
+        val gpsCoordinates = _mediaService.getGpsData(file.inputStream())
+        mMedium = Medium(
+            null,
+            filename,
+            mUri.toString(),
+            mUri!!.path!!.getParentPath(),
+            0,
+            0,
+            gpsCoordinates?.latitude ?: 0.0,
+            gpsCoordinates?.longitude ?: 0.0,
+            file.length (),
+            type,
+            0,
+            false,
+            0L,
+            0
+        )
         binding.fragmentViewerToolbar.title = Html.fromHtml("<font color='${Color.WHITE.toHex()}'>${mMedium!!.name}</font>")
         bundle.putSerializable(MEDIUM, mMedium)
 
@@ -258,36 +277,15 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
             return
         }
 
-        var isPanorama = false
         val realPath = intent?.extras?.getString(REAL_FILE_PATH) ?: ""
         try {
             if (realPath.isNotEmpty()) {
                 val fis = FileInputStream(File(realPath))
                 parseFileChannel(realPath, fis.channel, 0, 0, 0) {
-                    isPanorama = true
                 }
             }
         } catch (ignored: Exception) {
         } catch (ignored: OutOfMemoryError) {
-        }
-
-        hideKeyboard()
-        if (isPanorama) {
-            Intent(applicationContext, PanoramaVideoActivity::class.java).apply {
-                putExtra(PATH, realPath)
-                startActivity(this)
-            }
-        } else {
-            val mimeType = getUriMimeType(mUri.toString(), newUri)
-            Intent(applicationContext, VideoPlayerActivity::class.java).apply {
-                setDataAndType(newUri, mimeType)
-                addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT)
-                if (intent.extras != null) {
-                    putExtras(intent.extras!!)
-                }
-
-                startActivity(this)
-            }
         }
         finish()
     }

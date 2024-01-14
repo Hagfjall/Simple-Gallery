@@ -28,7 +28,6 @@ import com.bumptech.glide.Glide
 import com.simplemobiletools.commons.extensions.*
 import com.simplemobiletools.commons.helpers.ensureBackgroundThread
 import com.simplemobiletools.gallery.pro.R
-import com.simplemobiletools.gallery.pro.activities.PanoramaVideoActivity
 import com.simplemobiletools.gallery.pro.activities.VideoActivity
 import com.simplemobiletools.gallery.pro.databinding.PagerVideoItemBinding
 import com.simplemobiletools.gallery.pro.extensions.config
@@ -90,7 +89,6 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
         mMedium = arguments.getSerializable(MEDIUM) as Medium
         mConfig = context.config
         binding = PagerVideoItemBinding.inflate(inflater, container, false).apply {
-            panoramaOutline.setOnClickListener { openPanorama() }
             bottomVideoTimeHolder.videoCurrTime.setOnClickListener { skip(false) }
             bottomVideoTimeHolder.videoDuration.setOnClickListener { skip(true) }
             videoHolder.setOnClickListener { toggleFullscreen() }
@@ -501,13 +499,6 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
         }
     }
 
-    private fun openPanorama() {
-        Intent(context, PanoramaVideoActivity::class.java).apply {
-            putExtra(PATH, mMedium.path)
-            startActivity(this)
-        }
-    }
-
     override fun fullscreenToggled(isFullscreen: Boolean) {
         mIsFullscreen = isFullscreen
         val newAlpha = if (isFullscreen) 0f else 1f
@@ -602,11 +593,6 @@ class VideoFragment : ViewPagerFragment(), TextureView.SurfaceTextureListener, S
     }
 
     override fun onStopTrackingTouch(seekBar: SeekBar) {
-        if (mIsPanorama) {
-            openPanorama()
-            return
-        }
-
         if (mExoPlayer == null) {
             return
         }

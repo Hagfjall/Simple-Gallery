@@ -43,7 +43,6 @@ import com.simplemobiletools.commons.extensions.*
 import com.simplemobiletools.commons.helpers.ensureBackgroundThread
 import com.simplemobiletools.commons.helpers.isRPlus
 import com.simplemobiletools.gallery.pro.R
-import com.simplemobiletools.gallery.pro.activities.PanoramaPhotoActivity
 import com.simplemobiletools.gallery.pro.activities.PhotoActivity
 import com.simplemobiletools.gallery.pro.activities.PhotoVideoActivity
 import com.simplemobiletools.gallery.pro.activities.ViewPagerActivity
@@ -121,7 +120,6 @@ class PhotoFragment : ViewPagerFragment() {
             gifView.setOnClickListener { photoClicked() }
             instantPrevItem.setOnClickListener { listener?.goToPrevItem() }
             instantNextItem.setOnClickListener { listener?.goToNextItem() }
-            panoramaOutline.setOnClickListener { openPanorama() }
 
             instantPrevItem.parentView = container
             instantNextItem.parentView = container
@@ -639,13 +637,6 @@ class PhotoFragment : ViewPagerFragment() {
     }
 
     private fun getFilePathToShow() = if (mMedium.isPortrait()) mCurrentPortraitPhotoPath else getPathToLoad(mMedium)
-
-    private fun openPanorama() {
-        Intent(context, PanoramaPhotoActivity::class.java).apply {
-            putExtra(PATH, mMedium.path)
-            startActivity(this)
-        }
-    }
 
     private fun scheduleZoomableView() {
         mLoadZoomableViewHandler.removeCallbacksAndMessages(null)

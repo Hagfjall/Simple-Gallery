@@ -57,7 +57,6 @@ class SettingsActivity : SimpleActivity() {
         setupFileLoadingPriority()
         setupManageIncludedFolders()
         setupManageExcludedFolders()
-        setupManageHiddenFolders()
         setupSearchAllFiles()
         setupShowHiddenItems()
         setupAutoplayVideos()
@@ -219,14 +218,6 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupManageHiddenFolders() {
-        binding.settingsManageHiddenFoldersHolder.beGoneIf(isQPlus())
-        binding.settingsManageHiddenFoldersHolder.setOnClickListener {
-            handleHiddenFolderPasswordProtection {
-                startActivity(Intent(this, HiddenFoldersActivity::class.java))
-            }
-        }
-    }
 
     private fun setupShowHiddenItems() {
         if (isRPlus() && !isExternalStorageManager()) {

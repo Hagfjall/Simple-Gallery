@@ -54,6 +54,8 @@ import com.simplemobiletools.gallery.pro.fragments.ViewPagerFragment
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.models.Medium
 import com.simplemobiletools.gallery.pro.models.ThumbnailItem
+import se.hagfjall.photosorganizer.mediaRenamer.IMediaService
+import se.hagfjall.photosorganizer.mediaRenamer.MediaService
 import java.io.File
 import kotlin.math.min
 
@@ -81,6 +83,8 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private var mMediaFiles = ArrayList<Medium>()
     private var mFavoritePaths = ArrayList<String>()
     private var mIgnoredPaths = ArrayList<String>()
+
+    private val _mediaService : IMediaService = MediaService()
 
     private val binding by viewBinding(ActivityMediumBinding::inflate)
 
@@ -385,7 +389,23 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             val filename = mPath.getFilenameFromPath()
             val folder = mPath.getParentPath()
             val type = getTypeFromPath(mPath)
-            val medium = Medium(null, filename, mPath, folder, 0, 0, 0, type, 0, false, 0L, 0L)
+            val gpsCoordinates = _mediaService.getGpsData(mPath)
+            val medium = Medium(
+                null,
+                filename,
+                mPath,
+                folder,
+                0,
+                0,
+                gpsCoordinates?.latitude ?: 0.0,
+                gpsCoordinates?.longitude?: 0.0,
+                0,
+                type,
+                0,
+                false,
+                0L,
+                0L
+            )
             mMediaFiles.add(medium)
             gotMedia(mMediaFiles as ArrayList<ThumbnailItem>, refetchViewPagerPosition = true)
         }
@@ -427,7 +447,23 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                     val isFavorite = favoritesDB.isFavorite(mPath)
                     val duration = if (type == TYPE_VIDEOS) getDuration(mPath) ?: 0 else 0
                     val ts = System.currentTimeMillis()
-                    val medium = Medium(null, filename, mPath, parent, ts, ts, File(mPath).length(), type, duration, isFavorite, 0, 0L)
+                    val gpsCoordinates = _mediaService.getGpsData(mPath)
+                    val medium = Medium(
+                        null,
+                        filename,
+                        mPath,
+                        parent,
+                        ts,
+                        ts,
+                        gpsCoordinates?.latitude ?: 0.0,
+                        gpsCoordinates?.longitude ?: 0.0,
+                        File(mPath).length(),
+                        type,
+                        duration,
+                        isFavorite,
+                        0,
+                        0L
+                    )
                     mediaDB.insert(medium)
                 }
             }

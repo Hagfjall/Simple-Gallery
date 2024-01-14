@@ -43,6 +43,7 @@ import com.simplemobiletools.gallery.pro.interfaces.*
 import com.simplemobiletools.gallery.pro.models.*
 import com.simplemobiletools.gallery.pro.svg.SvgSoftwareLayerSetter
 import com.squareup.picasso.Picasso
+import se.hagfjall.photosorganizer.mediaRenamer.MediaService
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -964,8 +965,11 @@ fun Context.addPathToDB(path: String) {
         try {
             val isFavorite = favoritesDB.isFavorite(path)
             val videoDuration = if (type == TYPE_VIDEOS) getDuration(path) ?: 0 else 0
+            val gpsCoordinates = MediaService().getGpsData(path)
             val medium = Medium(
                 null, path.getFilenameFromPath(), path, path.getParentPath(), System.currentTimeMillis(), System.currentTimeMillis(),
+                gpsCoordinates?.latitude ?: 0.0,
+                gpsCoordinates?.longitude?: 0.0,
                 File(path).length(), type, videoDuration, isFavorite, 0L, 0L
             )
 
@@ -999,7 +1003,7 @@ fun Context.createDirectoryFromMedia(
     }
 
     val isSortingAscending = config.directorySorting.isSortingAscending()
-    val defaultMedium = Medium(0, "", "", "", 0L, 0L, 0L, 0, 0, false, 0L, 0L)
+    val defaultMedium = Medium(0, "", "", "", 0L, 0L, 0.0, 0.0, 0L, 0, 0, false, 0L, 0L)
     val firstItem = curMedia.firstOrNull() ?: defaultMedium
     val lastItem = curMedia.lastOrNull() ?: defaultMedium
     val dirName = checkAppendingHidden(path, hiddenString, includedFolders, noMediaFolders)

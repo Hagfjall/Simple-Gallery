@@ -20,6 +20,8 @@ data class Medium(
     @ColumnInfo(name = "parent_path") var parentPath: String,
     @ColumnInfo(name = "last_modified") var modified: Long,
     @ColumnInfo(name = "date_taken") var taken: Long,
+    @ColumnInfo(name = "gps_latitude") var gpsLatitude: Double,
+    @ColumnInfo(name = "gps_longitude") var gpsLongitude: Double,
     @ColumnInfo(name = "size") var size: Long,
     @ColumnInfo(name = "type") var type: Int,
     @ColumnInfo(name = "video_duration") var videoDuration: Int,
@@ -30,7 +32,7 @@ data class Medium(
     @Ignore var gridPosition: Int = 0   // used at grid view decoration at Grouping enabled
 ) : Serializable, ThumbnailItem() {
 
-    constructor() : this(null, "", "", "", 0L, 0L, 0L, 0, 0, false, 0L, 0L, 0)
+    constructor() : this(null, "", "", "", 0L, 0L, 0.0, 0.0, 0L, 0, 0, false, 0L, 0L, 0)
 
     companion object {
         private const val serialVersionUID = -6553149366975655L
