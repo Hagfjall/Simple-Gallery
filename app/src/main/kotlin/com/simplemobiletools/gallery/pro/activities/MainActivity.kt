@@ -345,7 +345,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 R.id.temporarily_show_excluded -> tryToggleTemporarilyShowExcluded()
                 R.id.stop_showing_excluded -> tryToggleTemporarilyShowExcluded()
                 R.id.column_count -> changeColumnCount()
-                R.id.more_apps_from_us -> launchMoreAppsFromUsIntent()
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
                 else -> return@setOnMenuItemClickListener false
@@ -445,17 +444,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 if (!mWasDefaultFolderChecked) {
                     openDefaultFolder()
                     mWasDefaultFolderChecked = true
-                }
-
-                if (isPackageInstalled("com.simplemobiletools.gallery")) {
-                    ConfirmationDialog(
-                        this,
-                        "",
-                        com.simplemobiletools.commons.R.string.upgraded_from_free_gallery,
-                        com.simplemobiletools.commons.R.string.ok,
-                        0,
-                        false
-                    ) {}
                 }
 
                 checkOTGPath()
