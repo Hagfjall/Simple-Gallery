@@ -98,8 +98,9 @@ abstract class GalleryDatabase : RoomDatabase() {
 
         private val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE media ADD COLUMN gps_latitude FLOAT default 0")
-                database.execSQL("ALTER TABLE media ADD COLUMN gps_longitude FLOAT default 0")
+                database.execSQL(
+                    "ALTER TABLE media ADD COLUMN gps_latitude FLOAT default 0, " +
+                    "ADD COLUMN gps_longitude FLOAT default 0")
             }
         }
     }
