@@ -44,12 +44,10 @@ import com.simplemobiletools.gallery.pro.R
 import com.simplemobiletools.gallery.pro.adapters.MyPagerAdapter
 import com.simplemobiletools.gallery.pro.asynctasks.GetMediaAsynctask
 import com.simplemobiletools.gallery.pro.databinding.ActivityMediumBinding
-import com.simplemobiletools.gallery.pro.dialogs.DeleteWithRememberDialog
 import com.simplemobiletools.gallery.pro.dialogs.SaveAsDialog
 import com.simplemobiletools.gallery.pro.dialogs.SlideshowDialog
 import com.simplemobiletools.gallery.pro.extensions.*
 import com.simplemobiletools.gallery.pro.fragments.PhotoFragment
-import com.simplemobiletools.gallery.pro.fragments.VideoFragment
 import com.simplemobiletools.gallery.pro.fragments.ViewPagerFragment
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.models.Medium
@@ -84,7 +82,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private var mFavoritePaths = ArrayList<String>()
     private var mIgnoredPaths = ArrayList<String>()
 
-    private val _mediaService : IMediaService = MediaService()
+    private val _mediaService: IMediaService = MediaService()
 
     private val binding by viewBinding(ActivityMediumBinding::inflate)
 
@@ -147,17 +145,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     override fun onDestroy() {
         super.onDestroy()
-        if (intent.extras?.containsKey(IS_VIEW_INTENT) == true) {
-            config.temporarilyShowHidden = false
-        }
-
-        if (config.isThirdPartyIntent) {
-            config.isThirdPartyIntent = false
-
-            if (intent.extras == null || isExternalIntent()) {
-                mMediaFiles.clear()
-            }
-        }
     }
 
     fun refreshMenuItems() {
@@ -227,7 +214,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 return@setOnMenuItemClickListener true
             }
 
-            when (menuItem.itemId) {
+            when (menuItem.itemId) {//TODO delete all these items
                 R.id.menu_set_as -> setAs(getCurrentPath())
                 R.id.menu_slideshow -> initSlideshow()
                 R.id.menu_copy_to -> checkMediaManagementAndCopy(true)
@@ -357,12 +344,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     private fun initContinue() {
         if (intent.extras?.containsKey(IS_VIEW_INTENT) == true) {
-            if (isShowHiddenFlagNeeded()) {
-                if (!config.isHiddenPasswordProtectionOn) {
-                    config.temporarilyShowHidden = true
-                }
-            }
-
             config.isThirdPartyIntent = true
         }
 
@@ -398,7 +379,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 0,
                 0,
                 gpsCoordinates?.latitude ?: 0.0,
-                gpsCoordinates?.longitude?: 0.0,
+                gpsCoordinates?.longitude ?: 0.0,
                 0,
                 type,
                 0,
@@ -650,8 +631,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                         swipeToNextMedium()
                     }
                 }, mSlideshowInterval * 1000L)
-            } else {
-                (getCurrentFragment() as? VideoFragment)!!.playVideo()
             }
         }
     }
@@ -716,7 +695,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
             config.tempFolderPath = ""
             if (!isCopyOperation) {
                 refreshViewPager()
-                updateFavoritePaths(fileDirItems, it)
             }
         }
     }
@@ -783,14 +761,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
                 }
 
                 toast(com.simplemobiletools.commons.R.string.saving)
-                ensureBackgroundThread {
-                    val photoFragment = getCurrentPhotoFragment() ?: return@ensureBackgroundThread
-                    saveRotatedImageToFile(currPath, newPath, photoFragment.mCurrentRotationDegrees, true) {
-                        toast(com.simplemobiletools.commons.R.string.file_saved)
-                        getCurrentPhotoFragment()?.mCurrentRotationDegrees = 0
-                        refreshMenuItems()
-                    }
-                }
             }
         }
     }
@@ -829,27 +799,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
     private fun getCurrentPhotoFragment() = getCurrentFragment() as? PhotoFragment
 
     private fun getPortraitPath() = intent.getStringExtra(PORTRAIT_PATH) ?: ""
-
-    private fun isShowHiddenFlagNeeded(): Boolean {
-        val file = File(mPath)
-        if (file.isHidden) {
-            return true
-        }
-
-        var parent = file.parentFile ?: return false
-        while (true) {
-            if (parent.isHidden || parent.list()?.any { it.startsWith(NOMEDIA) } == true) {
-                return true
-            }
-
-            if (parent.absolutePath == "/") {
-                break
-            }
-            parent = parent.parentFile ?: return false
-        }
-
-        return false
-    }
 
     private fun getCurrentFragment() = (binding.viewPager.adapter as? MyPagerAdapter)?.getCurrentFragment(binding.viewPager.currentItem)
 
@@ -1080,7 +1029,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
 
     private fun resizeImage() {
         val oldPath = getCurrentPath()
-        launchResizeImageDialog(oldPath)
     }
 
     private fun checkDeleteConfirmation() {
@@ -1091,10 +1039,8 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         handleMediaManagementPrompt {
             if (config.isDeletePasswordProtectionOn) {
                 handleDeletePasswordProtection {
-                    deleteConfirmed(config.tempSkipRecycleBin)
+                    deleteConfirmed()
                 }
-            } else if (config.tempSkipDeleteConfirmation || config.skipDeleteConfirmation) {
-                deleteConfirmed(config.tempSkipRecycleBin)
             } else {
                 askConfirmDelete()
             }
@@ -1108,27 +1054,15 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         val filenameAndSize = "$filename ($size)"
         val isInRecycleBin = getCurrentMedium()!!.getIsInRecycleBin()
 
-        val baseString = if (config.useRecycleBin && !config.tempSkipRecycleBin && !isInRecycleBin) {
-            com.simplemobiletools.commons.R.string.move_to_recycle_bin_confirmation
-        } else {
-            com.simplemobiletools.commons.R.string.deletion_confirmation
-        }
+        val baseString = com.simplemobiletools.commons.R.string.deletion_confirmation
+
 
         val message = String.format(resources.getString(baseString), filenameAndSize)
-        val showSkipRecycleBinOption = config.useRecycleBin && !isInRecycleBin
 
-        DeleteWithRememberDialog(this, message, showSkipRecycleBinOption) { remember, skipRecycleBin ->
-            config.tempSkipDeleteConfirmation = remember
-
-            if (remember) {
-                config.tempSkipRecycleBin = skipRecycleBin
-            }
-
-            deleteConfirmed(skipRecycleBin)
-        }
+        deleteConfirmed()
     }
 
-    private fun deleteConfirmed(skipRecycleBin: Boolean) {
+    private fun deleteConfirmed() {
         val currentMedium = getCurrentMedium()
         val path = currentMedium?.path ?: return
         if (getIsPathDirectory(path) || !path.isMediaFile()) {
@@ -1136,7 +1070,7 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         }
 
         val fileDirItem = currentMedium.toFileDirItem()
-        if (config.useRecycleBin && !skipRecycleBin && !getCurrentMedium()!!.getIsInRecycleBin()) {
+        if (!getCurrentMedium()!!.getIsInRecycleBin()) {
             checkManageMediaOrHandleSAFDialogSdk30(fileDirItem.path) {
                 if (!it) {
                     return@checkManageMediaOrHandleSAFDialogSdk30
@@ -1254,11 +1188,6 @@ class ViewPagerActivity : SimpleActivity(), ViewPager.OnPageChangeListener, View
         }.map { it as Medium }.toMutableList() as ArrayList<Medium>
 
         if (isDirEmpty(media) || media.hashCode() == mPrevHashcode) {
-            return
-        }
-
-        val isPlaying = (getCurrentFragment() as? VideoFragment)?.mIsPlaying == true
-        if (!ignorePlayingVideos && isPlaying && !isExternalIntent()) {
             return
         }
 

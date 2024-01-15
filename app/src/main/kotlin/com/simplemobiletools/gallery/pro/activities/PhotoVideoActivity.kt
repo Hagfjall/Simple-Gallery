@@ -18,7 +18,6 @@ import com.simplemobiletools.gallery.pro.R
 import com.simplemobiletools.gallery.pro.databinding.FragmentHolderBinding
 import com.simplemobiletools.gallery.pro.extensions.*
 import com.simplemobiletools.gallery.pro.fragments.PhotoFragment
-import com.simplemobiletools.gallery.pro.fragments.VideoFragment
 import com.simplemobiletools.gallery.pro.fragments.ViewPagerFragment
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.models.Medium
@@ -246,7 +245,7 @@ open class PhotoVideoActivity : SimpleActivity(), ViewPagerFragment.FragmentList
         bundle.putSerializable(MEDIUM, mMedium)
 
         if (savedInstanceState == null) {
-            mFragment = if (mIsVideo) VideoFragment() else PhotoFragment()
+            mFragment = PhotoFragment()
             mFragment!!.listener = this
             mFragment!!.arguments = bundle
             supportFragmentManager.beginTransaction().replace(R.id.fragment_placeholder, mFragment!!).commit()

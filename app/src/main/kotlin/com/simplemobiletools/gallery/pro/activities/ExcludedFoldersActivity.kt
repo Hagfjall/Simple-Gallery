@@ -70,7 +70,7 @@ class ExcludedFoldersActivity : SimpleActivity(), RefreshRecyclerViewListener {
             activity = this,
             internalStoragePath,
             pickFile = false,
-            config.shouldShowHidden,
+            showHidden = false,
             showFAB = false,
             canAddShowHiddenButton = true,
             enforceStorageRestrictions = false,

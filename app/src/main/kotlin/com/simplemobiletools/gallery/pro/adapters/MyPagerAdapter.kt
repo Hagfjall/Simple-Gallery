@@ -9,7 +9,6 @@ import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.viewpager.widget.PagerAdapter
 import com.simplemobiletools.gallery.pro.activities.ViewPagerActivity
 import com.simplemobiletools.gallery.pro.fragments.PhotoFragment
-import com.simplemobiletools.gallery.pro.fragments.VideoFragment
 import com.simplemobiletools.gallery.pro.fragments.ViewPagerFragment
 import com.simplemobiletools.gallery.pro.helpers.MEDIUM
 import com.simplemobiletools.gallery.pro.helpers.SHOULD_INIT_FRAGMENT
@@ -26,11 +25,7 @@ class MyPagerAdapter(val activity: ViewPagerActivity, fm: FragmentManager, val m
         val bundle = Bundle()
         bundle.putSerializable(MEDIUM, medium)
         bundle.putBoolean(SHOULD_INIT_FRAGMENT, shouldInitFragment)
-        val fragment = if (medium.isVideo()) {
-            VideoFragment()
-        } else {
-            PhotoFragment()
-        }
+        val fragment = PhotoFragment()
 
         fragment.arguments = bundle
         fragment.listener = activity

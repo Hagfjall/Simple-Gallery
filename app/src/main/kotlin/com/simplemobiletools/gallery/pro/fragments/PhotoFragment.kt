@@ -49,7 +49,6 @@ import com.simplemobiletools.gallery.pro.activities.ViewPagerActivity
 import com.simplemobiletools.gallery.pro.adapters.PortraitPhotosAdapter
 import com.simplemobiletools.gallery.pro.databinding.PagerPhotoItemBinding
 import com.simplemobiletools.gallery.pro.extensions.config
-import com.simplemobiletools.gallery.pro.extensions.saveRotatedImageToFile
 import com.simplemobiletools.gallery.pro.extensions.sendFakeClick
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.models.Medium
@@ -269,12 +268,6 @@ class PhotoFragment : ViewPagerFragment() {
         }
 
         mLoadZoomableViewHandler.removeCallbacksAndMessages(null)
-        if (mCurrentRotationDegrees != 0) {
-            ensureBackgroundThread {
-                val path = mMedium.path
-                (activity as? BaseSimpleActivity)?.saveRotatedImageToFile(path, path, mCurrentRotationDegrees, false) {}
-            }
-        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

@@ -52,7 +52,6 @@ class SettingsActivity : SimpleActivity() {
     private fun setupSettingItems() {
         setupCustomizeColors()
         setupUseEnglish()
-        setupLanguage()
         setupChangeDateTimeFormat()
         setupFileLoadingPriority()
         setupManageIncludedFolders()
@@ -94,14 +93,8 @@ class SettingsActivity : SimpleActivity() {
         setupManageExtendedDetails()
         setupSkipDeleteConfirmation()
         setupManageBottomActions()
-        setupUseRecycleBin()
-        setupShowRecycleBin()
-        setupShowRecycleBinLast()
-        setupEmptyRecycleBin()
         updateTextColors(binding.settingsHolder)
         setupClearCache()
-        setupExportFavorites()
-        setupImportFavorites()
         setupExportSettings()
         setupImportSettings()
 
@@ -151,14 +144,6 @@ class SettingsActivity : SimpleActivity() {
             binding.settingsUseEnglish.toggle()
             config.useEnglish = binding.settingsUseEnglish.isChecked
             exitProcess(0)
-        }
-    }
-
-    private fun setupLanguage() {
-        binding.settingsLanguage.text = Locale.getDefault().displayLanguage
-        binding.settingsLanguageHolder.beVisibleIf(isTiramisuPlus())
-        binding.settingsLanguageHolder.setOnClickListener {
-            launchChangeAppLanguageIntent()
         }
     }
 
@@ -227,12 +212,10 @@ class SettingsActivity : SimpleActivity() {
             binding.settingsShowHiddenItems.setText(com.simplemobiletools.commons.R.string.show_hidden_items)
         }
 
-        binding.settingsShowHiddenItems.isChecked = config.showHiddenMedia
+        binding.settingsShowHiddenItems.isChecked = false
         binding.settingsShowHiddenItemsHolder.setOnClickListener {
             if (isRPlus() && !isExternalStorageManager()) {
                 GrantAllFilesDialog(this)
-            } else if (config.showHiddenMedia) {
-                toggleHiddenItems()
             } else {
                 handleHiddenFolderPasswordProtection {
                     toggleHiddenItems()
@@ -243,7 +226,6 @@ class SettingsActivity : SimpleActivity() {
 
     private fun toggleHiddenItems() {
         binding.settingsShowHiddenItems.toggle()
-        config.showHiddenMedia = binding.settingsShowHiddenItems.isChecked
     }
 
     private fun setupSearchAllFiles() {
@@ -647,10 +629,9 @@ class SettingsActivity : SimpleActivity() {
 
     private fun setupUseRecycleBin() {
         updateRecycleBinButtons()
-        binding.settingsUseRecycleBin.isChecked = config.useRecycleBin
+        binding.settingsUseRecycleBin.isChecked = false
         binding.settingsUseRecycleBinHolder.setOnClickListener {
             binding.settingsUseRecycleBin.toggle()
-            config.useRecycleBin = binding.settingsUseRecycleBin.isChecked
             updateRecycleBinButtons()
         }
     }
@@ -676,9 +657,9 @@ class SettingsActivity : SimpleActivity() {
     }
 
     private fun updateRecycleBinButtons() {
-        binding.settingsShowRecycleBinLastHolder.beVisibleIf(config.useRecycleBin && config.showRecycleBinAtFolders)
-        binding.settingsEmptyRecycleBinHolder.beVisibleIf(config.useRecycleBin)
-        binding.settingsShowRecycleBinHolder.beVisibleIf(config.useRecycleBin)
+        binding.settingsShowRecycleBinLastHolder.beVisibleIf(false && config.showRecycleBinAtFolders)
+        binding.settingsEmptyRecycleBinHolder.beVisibleIf(false)
+        binding.settingsShowRecycleBinHolder.beVisibleIf(false)
     }
 
     private fun setupEmptyRecycleBin() {
@@ -705,11 +686,6 @@ class SettingsActivity : SimpleActivity() {
             if (mRecycleBinContentSize == 0L) {
                 toast(com.simplemobiletools.commons.R.string.recycle_bin_empty)
             } else {
-                showRecycleBinEmptyingDialog {
-                    emptyTheRecycleBin()
-                    mRecycleBinContentSize = 0L
-                    binding.settingsEmptyRecycleBinSize.text = 0L.formatSize()
-                }
             }
         }
     }
@@ -858,7 +834,7 @@ class SettingsActivity : SimpleActivity() {
                 put(USE_24_HOUR_FORMAT, config.use24HourFormat)
                 put(INCLUDED_FOLDERS, TextUtils.join(",", config.includedFolders))
                 put(EXCLUDED_FOLDERS, TextUtils.join(",", config.excludedFolders))
-                put(SHOW_HIDDEN_MEDIA, config.showHiddenMedia)
+                put(SHOW_HIDDEN_MEDIA, false)
                 put(FILE_LOADING_PRIORITY, config.fileLoadingPriority)
                 put(AUTOPLAY_VIDEOS, config.autoplayVideos)
                 put(REMEMBER_LAST_VIDEO_POSITION, config.rememberLastVideoPosition)
@@ -892,7 +868,7 @@ class SettingsActivity : SimpleActivity() {
                 put(SKIP_DELETE_CONFIRMATION, config.skipDeleteConfirmation)
                 put(BOTTOM_ACTIONS, config.bottomActions)
                 put(VISIBLE_BOTTOM_ACTIONS, config.visibleBottomActions)
-                put(USE_RECYCLE_BIN, config.useRecycleBin)
+                put(USE_RECYCLE_BIN, false)
                 put(SHOW_RECYCLE_BIN_AT_FOLDERS, config.showRecycleBinAtFolders)
                 put(SHOW_RECYCLE_BIN_LAST, config.showRecycleBinLast)
                 put(SORT_ORDER, config.sorting)
@@ -1002,7 +978,7 @@ class SettingsActivity : SimpleActivity() {
                 USE_24_HOUR_FORMAT -> config.use24HourFormat = value.toBoolean()
                 INCLUDED_FOLDERS -> config.addIncludedFolders(value.toStringSet())
                 EXCLUDED_FOLDERS -> config.addExcludedFolders(value.toStringSet())
-                SHOW_HIDDEN_MEDIA -> config.showHiddenMedia = value.toBoolean()
+                SHOW_HIDDEN_MEDIA -> false
                 FILE_LOADING_PRIORITY -> config.fileLoadingPriority = value.toInt()
                 AUTOPLAY_VIDEOS -> config.autoplayVideos = value.toBoolean()
                 REMEMBER_LAST_VIDEO_POSITION -> config.rememberLastVideoPosition = value.toBoolean()
@@ -1036,7 +1012,7 @@ class SettingsActivity : SimpleActivity() {
                 SKIP_DELETE_CONFIRMATION -> config.skipDeleteConfirmation = value.toBoolean()
                 BOTTOM_ACTIONS -> config.bottomActions = value.toBoolean()
                 VISIBLE_BOTTOM_ACTIONS -> config.visibleBottomActions = value.toInt()
-                USE_RECYCLE_BIN -> config.useRecycleBin = value.toBoolean()
+                USE_RECYCLE_BIN -> false
                 SHOW_RECYCLE_BIN_AT_FOLDERS -> config.showRecycleBinAtFolders = value.toBoolean()
                 SHOW_RECYCLE_BIN_LAST -> config.showRecycleBinLast = value.toBoolean()
                 SORT_ORDER -> config.sorting = value.toInt()

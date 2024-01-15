@@ -1,9 +1,5 @@
 package com.simplemobiletools.gallery.pro.adapters
 
-import android.content.Intent
-import android.content.pm.ShortcutInfo
-import android.content.pm.ShortcutManager
-import android.graphics.drawable.Icon
 import android.os.Handler
 import android.os.Looper
 import android.view.Menu
@@ -23,9 +19,7 @@ import com.simplemobiletools.commons.helpers.*
 import com.simplemobiletools.commons.models.FileDirItem
 import com.simplemobiletools.commons.views.MyRecyclerView
 import com.simplemobiletools.gallery.pro.R
-import com.simplemobiletools.gallery.pro.activities.ViewPagerActivity
 import com.simplemobiletools.gallery.pro.databinding.*
-import com.simplemobiletools.gallery.pro.dialogs.DeleteWithRememberDialog
 import com.simplemobiletools.gallery.pro.extensions.*
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.interfaces.MediaOperationsListener
@@ -128,23 +122,9 @@ class MediaAdapter(
         }
 
         val isOneItemSelected = isOneItemSelected()
-        val selectedPaths = selectedItems.map { it.path } as ArrayList<String>
-        val isInRecycleBin = selectedItems.firstOrNull()?.getIsInRecycleBin() == true
         menu.apply {
-            findItem(R.id.cab_rename).isVisible = !isInRecycleBin
-            findItem(R.id.cab_add_to_favorites).isVisible = !isInRecycleBin
-            findItem(R.id.cab_fix_date_taken).isVisible = !isInRecycleBin
-            findItem(R.id.cab_move_to).isVisible = !isInRecycleBin
             findItem(R.id.cab_open_with).isVisible = isOneItemSelected
-            findItem(R.id.cab_edit).isVisible = isOneItemSelected
-            findItem(R.id.cab_set_as).isVisible = isOneItemSelected
-            findItem(R.id.cab_resize).isVisible = canResize(selectedItems)
             findItem(R.id.cab_confirm_selection).isVisible = isAGetIntent && allowMultiplePicks && selectedKeys.isNotEmpty()
-            findItem(R.id.cab_restore_recycle_bin_files).isVisible = selectedPaths.all { it.startsWith(activity.recycleBinPath) }
-            findItem(R.id.cab_create_shortcut).isVisible = isOreoPlus() && isOneItemSelected
-
-            checkHideBtnVisibility(this, selectedItems)
-            checkFavoriteBtnVisibility(this, selectedItems)
         }
     }
 
@@ -157,25 +137,10 @@ class MediaAdapter(
             R.id.cab_confirm_selection -> confirmSelection()
             R.id.cab_properties -> showProperties()
             R.id.cab_rename -> checkMediaManagementAndRename()
-            R.id.cab_edit -> editFile()
-            R.id.cab_hide -> toggleFileVisibility(true)
-            R.id.cab_unhide -> toggleFileVisibility(false)
-            R.id.cab_add_to_favorites -> toggleFavorites(true)
-            R.id.cab_remove_from_favorites -> toggleFavorites(false)
-            R.id.cab_restore_recycle_bin_files -> restoreFiles()
-            R.id.cab_share -> shareMedia()
-            R.id.cab_rotate_right -> rotateSelection(90)
-            R.id.cab_rotate_left -> rotateSelection(270)
-            R.id.cab_rotate_one_eighty -> rotateSelection(180)
-            R.id.cab_copy_to -> checkMediaManagementAndCopy(true)
             R.id.cab_move_to -> moveFilesTo()
-            R.id.cab_create_shortcut -> createShortcut()
             R.id.cab_select_all -> selectAll()
             R.id.cab_open_with -> openPath()
             R.id.cab_fix_date_taken -> fixDateTaken()
-            R.id.cab_set_as -> setAs()
-            R.id.cab_resize -> resize()
-            R.id.cab_delete -> checkDeleteConfirmation()
         }
     }
 
@@ -205,17 +170,6 @@ class MediaAdapter(
 
     fun isASectionTitle(position: Int) = media.getOrNull(position) is ThumbnailSection
 
-    private fun checkHideBtnVisibility(menu: Menu, selectedItems: ArrayList<Medium>) {
-        val isInRecycleBin = selectedItems.firstOrNull()?.getIsInRecycleBin() == true
-        menu.findItem(R.id.cab_hide).isVisible = (!isRPlus() || isExternalStorageManager()) && !isInRecycleBin && selectedItems.any { !it.isHidden() }
-        menu.findItem(R.id.cab_unhide).isVisible = (!isRPlus() || isExternalStorageManager()) && !isInRecycleBin && selectedItems.any { it.isHidden() }
-    }
-
-    private fun checkFavoriteBtnVisibility(menu: Menu, selectedItems: ArrayList<Medium>) {
-        menu.findItem(R.id.cab_add_to_favorites).isVisible = selectedItems.none { it.getIsInRecycleBin() } && selectedItems.any { !it.isFavorite }
-        menu.findItem(R.id.cab_remove_from_favorites).isVisible = selectedItems.none { it.getIsInRecycleBin() } && selectedItems.any { it.isFavorite }
-    }
-
     private fun confirmSelection() {
         listener?.selectedPaths(getSelectedPaths())
     }
@@ -223,10 +177,10 @@ class MediaAdapter(
     private fun showProperties() {
         if (selectedKeys.size <= 1) {
             val path = getFirstSelectedItemPath() ?: return
-            PropertiesDialog(activity, path, config.shouldShowHidden)
+            PropertiesDialog(activity, path, false)
         } else {
             val paths = getSelectedPaths()
-            PropertiesDialog(activity, paths, config.shouldShowHidden)
+            PropertiesDialog(activity, paths, false)
         }
     }
 
@@ -267,121 +221,9 @@ class MediaAdapter(
         }
     }
 
-    private fun editFile() {
-        val path = getFirstSelectedItemPath() ?: return
-        activity.openEditor(path)
-    }
-
     private fun openPath() {
         val path = getFirstSelectedItemPath() ?: return
         activity.openPath(path, true)
-    }
-
-    private fun setAs() {
-        val path = getFirstSelectedItemPath() ?: return
-        activity.setAs(path)
-    }
-
-    private fun resize() {
-        val paths = getSelectedItems().filter { it.isImage() }.map { it.path }
-        if (isOneItemSelected()) {
-            val path = paths.first()
-            activity.launchResizeImageDialog(path) {
-                finishActMode()
-                listener?.refreshItems()
-            }
-        } else {
-            activity.launchResizeMultipleImagesDialog(paths) {
-                finishActMode()
-                listener?.refreshItems()
-            }
-        }
-    }
-
-    private fun canResize(selectedItems: ArrayList<Medium>): Boolean {
-        val selectionContainsImages = selectedItems.any { it.isImage() }
-        if (!selectionContainsImages) {
-            return false
-        }
-
-        val parentPath = selectedItems.first { it.isImage() }.parentPath
-        val isCommonParent = selectedItems.all { parentPath == it.parentPath }
-        val isRestrictedDir = activity.isRestrictedWithSAFSdk30(parentPath)
-        return isExternalStorageManager() || (isCommonParent && !isRestrictedDir)
-    }
-
-    private fun toggleFileVisibility(hide: Boolean) {
-        ensureBackgroundThread {
-            getSelectedItems().forEach {
-                activity.toggleFileVisibility(it.path, hide)
-            }
-            activity.runOnUiThread {
-                listener?.refreshItems()
-                finishActMode()
-            }
-        }
-    }
-
-    private fun toggleFavorites(add: Boolean) {
-        ensureBackgroundThread {
-            getSelectedItems().forEach {
-                it.isFavorite = add
-                activity.updateFavorite(it.path, add)
-            }
-            activity.runOnUiThread {
-                listener?.refreshItems()
-                finishActMode()
-            }
-        }
-    }
-
-    private fun restoreFiles() {
-        activity.restoreRecycleBinPaths(getSelectedPaths()) {
-            listener?.refreshItems()
-            finishActMode()
-        }
-    }
-
-    private fun shareMedia() {
-        if (selectedKeys.size == 1 && selectedKeys.first() != -1) {
-            activity.shareMediumPath(getSelectedItems().first().path)
-        } else if (selectedKeys.size > 1) {
-            activity.shareMediaPaths(getSelectedPaths())
-        }
-    }
-
-    private fun handleRotate(paths: List<String>, degrees: Int) {
-        var fileCnt = paths.size
-        rotatedImagePaths.clear()
-        activity.toast(com.simplemobiletools.commons.R.string.saving)
-        ensureBackgroundThread {
-            paths.forEach {
-                rotatedImagePaths.add(it)
-                activity.saveRotatedImageToFile(it, it, degrees, true) {
-                    fileCnt--
-                    if (fileCnt == 0) {
-                        activity.runOnUiThread {
-                            listener?.refreshItems()
-                            finishActMode()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun rotateSelection(degrees: Int) {
-        val paths = getSelectedPaths().filter { it.isImageFast() }
-
-        if (paths.any { activity.needsStupidWritePermissions(it) }) {
-            activity.handleSAFDialog(paths.first { activity.needsStupidWritePermissions(it) }) {
-                if (it) {
-                    handleRotate(paths, degrees)
-                }
-            }
-        } else {
-            handleRotate(paths, degrees)
-        }
     }
 
     private fun moveFilesTo() {
@@ -425,37 +267,6 @@ class MediaAdapter(
 
             if (!isCopyOperation) {
                 listener?.refreshItems()
-                activity.updateFavoritePaths(fileDirItems, destinationPath)
-            }
-        }
-    }
-
-    private fun createShortcut() {
-        if (!isOreoPlus()) {
-            return
-        }
-
-        val manager = activity.getSystemService(ShortcutManager::class.java)
-        if (manager.isRequestPinShortcutSupported) {
-            val path = getSelectedPaths().first()
-            val drawable = resources.getDrawable(R.drawable.shortcut_image).mutate()
-            activity.getShortcutImage(path, drawable) {
-                val intent = Intent(activity, ViewPagerActivity::class.java).apply {
-                    putExtra(PATH, path)
-                    putExtra(SHOW_ALL, config.showAll)
-                    putExtra(SHOW_FAVORITES, path == FAVORITES)
-                    putExtra(SHOW_RECYCLE_BIN, path == RECYCLE_BIN)
-                    action = Intent.ACTION_VIEW
-                    flags = flags or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-
-                val shortcut = ShortcutInfo.Builder(activity, path)
-                    .setShortLabel(path.getFilenameFromPath())
-                    .setIcon(Icon.createWithBitmap(drawable.convertToBitmap()))
-                    .setIntent(intent)
-                    .build()
-
-                manager.requestPinShortcut(shortcut, null)
             }
         }
     }
@@ -471,15 +282,7 @@ class MediaAdapter(
 
     private fun checkDeleteConfirmation() {
         activity.handleMediaManagementPrompt {
-            if (config.isDeletePasswordProtectionOn) {
-                activity.handleDeletePasswordProtection {
-                    deleteFiles(config.tempSkipRecycleBin)
-                }
-            } else if (config.tempSkipDeleteConfirmation || config.skipDeleteConfirmation) {
-                deleteFiles(config.tempSkipRecycleBin)
-            } else {
-                askConfirmDelete()
-            }
+            askConfirmDelete()
         }
     }
 
@@ -503,24 +306,10 @@ class MediaAdapter(
             "$deleteItemsString ($fileSize)"
         }
 
-        val isRecycleBin = firstPath.startsWith(activity.recycleBinPath)
-        val baseString =
-            if (config.useRecycleBin && !config.tempSkipRecycleBin && !isRecycleBin) com.simplemobiletools.commons.R.string.move_to_recycle_bin_confirmation else com.simplemobiletools.commons.R.string.deletion_confirmation
-        val question = String.format(resources.getString(baseString), itemsAndSize)
-        val showSkipRecycleBinOption = config.useRecycleBin && !isRecycleBin
-
-        DeleteWithRememberDialog(activity, question, showSkipRecycleBinOption) { remember, skipRecycleBin ->
-            config.tempSkipDeleteConfirmation = remember
-
-            if (remember) {
-                config.tempSkipRecycleBin = skipRecycleBin
-            }
-
-            deleteFiles(skipRecycleBin)
-        }
+        deleteFiles()
     }
 
-    private fun deleteFiles(skipRecycleBin: Boolean) {
+    private fun deleteFiles() {
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -549,7 +338,7 @@ class MediaAdapter(
                 }
 
                 media.removeAll(removeMedia)
-                listener?.tryDeleteFiles(fileDirItems, skipRecycleBin)
+                listener?.tryDeleteFiles(fileDirItems)
                 listener?.updateMediaGridDecoration(media)
                 removeSelectedItems(positions)
                 currentMediaHash = media.hashCode()

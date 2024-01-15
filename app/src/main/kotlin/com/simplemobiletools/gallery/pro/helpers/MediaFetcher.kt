@@ -102,7 +102,7 @@ class MediaFetcher(val context: Context) {
             folders.addAll(parseCursor(cursor!!))
 
             val config = context.config
-            val shouldShowHidden = config.shouldShowHidden
+            val shouldShowHidden = false
             val excludedPaths = if (config.temporarilyShowExcluded) {
                 HashSet()
             } else {
@@ -302,7 +302,7 @@ class MediaFetcher(val context: Context) {
         val config = context.config
         val checkProperFileSize = getProperFileSize || config.fileLoadingPriority == PRIORITY_COMPROMISE
         val checkFileExistence = config.fileLoadingPriority == PRIORITY_VALIDITY
-        val showHidden = config.shouldShowHidden
+        val showHidden = false
         val showPortraits = filterMedia and TYPE_PORTRAITS != 0
         val fileSizes = if (checkProperFileSize || checkFileExistence) getFolderSizes(folder) else HashMap()
 
@@ -457,7 +457,7 @@ class MediaFetcher(val context: Context) {
         }
 
         val filterMedia = context.config.filterMedia
-        val showHidden = context.config.shouldShowHidden
+        val showHidden = false
 
         val projection = arrayOf(
             Images.Media._ID,
@@ -579,7 +579,7 @@ class MediaFetcher(val context: Context) {
         val media = ArrayList<Medium>()
         val files = context.getDocumentFile(folder)?.listFiles() ?: return media
         val checkFileExistence = context.config.fileLoadingPriority == PRIORITY_VALIDITY
-        val showHidden = context.config.shouldShowHidden
+        val showHidden = false
         val OTGPath = context.config.OTGPath
 
         for (file in files) {

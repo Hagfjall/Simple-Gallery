@@ -643,7 +643,7 @@ fun Context.getCachedDirectories(
             directories.removeAll { it.isRecycleBin() }
         }
 
-        val shouldShowHidden = config.shouldShowHidden || forceShowHidden
+        val shouldShowHidden = false || forceShowHidden
         val excludedPaths = if (config.temporarilyShowExcluded || forceShowExcluded) {
             HashSet()
         } else {
@@ -729,7 +729,7 @@ fun Context.getCachedMedia(path: String, getVideosOnly: Boolean = false, getImag
             foldersToScan.addAll(foldersToAdd)
         }
 
-        val shouldShowHidden = config.shouldShowHidden
+        val shouldShowHidden = false
         foldersToScan.filter { path.isNotEmpty() || !config.isFolderProtected(it) }.forEach {
             try {
                 val currMedia = mediaDB.getMediaFromPath(it)

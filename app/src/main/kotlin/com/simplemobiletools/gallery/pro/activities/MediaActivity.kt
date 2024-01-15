@@ -56,7 +56,6 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     private var mLatestMediaId = 0L
     private var mLatestMediaDateId = 0L
     private var mLastMediaHandler = Handler()
-    private var mTempShowHiddenHandler = Handler()
     private var mCurrAsyncTask: GetMediaAsynctask? = null
     private var mZoomListener: MyRecyclerView.MyZoomListener? = null
 
@@ -126,7 +125,6 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
     override fun onStart() {
         super.onStart()
-        mTempShowHiddenHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onResume() {
@@ -212,29 +210,14 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
 
     override fun onStop() {
         super.onStop()
-
-        if (config.temporarilyShowHidden || config.tempSkipDeleteConfirmation) {
-            mTempShowHiddenHandler.postDelayed({
-                config.temporarilyShowHidden = false
-                config.tempSkipDeleteConfirmation = false
-                config.tempSkipRecycleBin = false
-            }, SHOW_TEMP_HIDDEN_DURATION)
-        } else {
-            mTempShowHiddenHandler.removeCallbacksAndMessages(null)
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (config.showAll && !isChangingConfigurations) {
-            config.temporarilyShowHidden = false
-            config.tempSkipDeleteConfirmation = false
-            config.tempSkipRecycleBin = false
             unregisterFileUpdateListener()
             GalleryDatabase.destroyInstance()
         }
-
-        mTempShowHiddenHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onBackPressed() {
@@ -256,26 +239,11 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
     }
 
     private fun refreshMenuItems() {
-        val isDefaultFolder = !config.defaultFolder.isEmpty() && File(config.defaultFolder).compareTo(File(mPath)) == 0
-
         binding.mediaMenu.getToolbar().menu.apply {
             findItem(R.id.group).isVisible = !config.scrollHorizontally
-
-            findItem(R.id.empty_recycle_bin).isVisible = mPath == RECYCLE_BIN
-            findItem(R.id.empty_disable_recycle_bin).isVisible = mPath == RECYCLE_BIN
             findItem(R.id.restore_all_files).isVisible = mPath == RECYCLE_BIN
-
             findItem(R.id.folder_view).isVisible = mShowAll
-            findItem(R.id.open_camera).isVisible = mShowAll
             findItem(R.id.about).isVisible = mShowAll
-            findItem(R.id.create_new_folder).isVisible = !mShowAll && mPath != RECYCLE_BIN && mPath != FAVORITES
-            findItem(R.id.open_recycle_bin).isVisible = config.useRecycleBin && mPath != RECYCLE_BIN
-
-            findItem(R.id.temporarily_show_hidden).isVisible = !config.shouldShowHidden
-            findItem(R.id.stop_showing_hidden).isVisible = (!isRPlus() || isExternalStorageManager()) && config.temporarilyShowHidden
-
-            findItem(R.id.set_as_default_folder).isVisible = !isDefaultFolder
-            findItem(R.id.unset_as_default_folder).isVisible = isDefaultFolder
 
             val viewType = config.getFolderViewType(if (mShowAll) SHOW_ALL else mPath)
             findItem(R.id.column_count).isVisible = viewType == VIEW_TYPE_GRID
@@ -298,41 +266,17 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
             when (menuItem.itemId) {
                 R.id.sort -> showSortingDialog()
                 R.id.filter -> showFilterMediaDialog()
-                R.id.empty_recycle_bin -> emptyRecycleBin()
-                R.id.empty_disable_recycle_bin -> emptyAndDisableRecycleBin()
                 R.id.restore_all_files -> restoreAllFiles()
                 R.id.toggle_filename -> toggleFilenameVisibility()
-                R.id.open_camera -> launchCamera()
                 R.id.folder_view -> switchToFolderView()
                 R.id.change_view_type -> changeViewType()
                 R.id.group -> showGroupByDialog()
-                R.id.create_new_folder -> createNewFolder()
-                R.id.open_recycle_bin -> openRecycleBin()
-                R.id.temporarily_show_hidden -> tryToggleTemporarilyShowHidden()
-                R.id.stop_showing_hidden -> tryToggleTemporarilyShowHidden()
                 R.id.column_count -> changeColumnCount()
-                R.id.set_as_default_folder -> setAsDefaultFolder()
-                R.id.unset_as_default_folder -> unsetAsDefaultFolder()
-                R.id.slideshow -> startSlideshow()
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
                 else -> return@setOnMenuItemClickListener false
             }
             return@setOnMenuItemClickListener true
-        }
-    }
-
-    private fun startSlideshow() {
-        if (mMedia.isNotEmpty()) {
-            hideKeyboard()
-            Intent(this, ViewPagerActivity::class.java).apply {
-                val item = mMedia.firstOrNull { it is Medium } as? Medium ?: return
-                putExtra(SKIP_AUTHENTICATION, shouldSkipAuthentication())
-                putExtra(PATH, item.path)
-                putExtra(SHOW_ALL, mShowAll)
-                putExtra(SLIDESHOW_START_ON_ENTER, true)
-                startActivity(this)
-            }
         }
     }
 
@@ -498,22 +442,6 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
     }
 
-    private fun emptyRecycleBin() {
-        showRecycleBinEmptyingDialog {
-            emptyTheRecycleBin {
-                finish()
-            }
-        }
-    }
-
-    private fun emptyAndDisableRecycleBin() {
-        showRecycleBinEmptyingDialog {
-            emptyAndDisableTheRecycleBin {
-                finish()
-            }
-        }
-    }
-
     private fun restoreAllFiles() {
         val paths = mMedia.filter { it is Medium }.map { (it as Medium).path } as ArrayList<String>
         restoreRecycleBinPaths(paths) {
@@ -657,27 +585,6 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         CreateNewFolderDialog(this, mPath) {
             config.tempFolderPath = it
         }
-    }
-
-    private fun tryToggleTemporarilyShowHidden() {
-        if (config.temporarilyShowHidden) {
-            toggleTemporarilyShowHidden(false)
-        } else {
-            if (isRPlus() && !isExternalStorageManager()) {
-                GrantAllFilesDialog(this)
-            } else {
-                handleHiddenFolderPasswordProtection {
-                    toggleTemporarilyShowHidden(true)
-                }
-            }
-        }
-    }
-
-    private fun toggleTemporarilyShowHidden(show: Boolean) {
-        mLoadedInitialPhotos = false
-        config.temporarilyShowHidden = show
-        getMedia()
-        refreshMenuItems()
     }
 
     private fun setupLayoutManager() {
@@ -896,13 +803,13 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
         }
     }
 
-    override fun tryDeleteFiles(fileDirItems: ArrayList<FileDirItem>, skipRecycleBin: Boolean) {
+    override fun tryDeleteFiles(fileDirItems: ArrayList<FileDirItem>) {
         val filtered = fileDirItems.filter { !getIsPathDirectory(it.path) && it.path.isMediaFile() } as ArrayList
         if (filtered.isEmpty()) {
             return
         }
 
-        if (config.useRecycleBin && !skipRecycleBin && !filtered.first().path.startsWith(recycleBinPath)) {
+        if (!filtered.first().path.startsWith(recycleBinPath)) {
             val movingItems = resources.getQuantityString(com.simplemobiletools.commons.R.plurals.moving_items_into_bin, filtered.size, filtered.size)
             toast(movingItems)
 
@@ -932,11 +839,8 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
             mMedia.removeAll { filtered.map { it.path }.contains((it as? Medium)?.path) }
 
             ensureBackgroundThread {
-                val useRecycleBin = config.useRecycleBin
                 filtered.forEach {
-                    if (it.path.startsWith(recycleBinPath) || !useRecycleBin) {
-                        deleteDBPath(it.path)
-                    }
+                    deleteDBPath(it.path)
                 }
             }
 
@@ -974,15 +878,5 @@ class MediaActivity : SimpleActivity(), MediaOperationsListener {
             val currentGridDecoration = binding.mediaGrid.getItemDecorationAt(0) as GridSpacingItemDecoration
             currentGridDecoration.items = media
         }
-    }
-
-    private fun setAsDefaultFolder() {
-        config.defaultFolder = mPath
-        refreshMenuItems()
-    }
-
-    private fun unsetAsDefaultFolder() {
-        config.defaultFolder = ""
-        refreshMenuItems()
     }
 }

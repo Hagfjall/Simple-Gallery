@@ -33,7 +33,6 @@ class PickDirectoryDialog(
     private var openedSubfolders = arrayListOf("")
     private var binding = DialogDirectoryPickerBinding.inflate(activity.layoutInflater)
     private var isGridViewType = activity.config.viewTypeFolders == VIEW_TYPE_GRID
-    private var showHidden = activity.config.shouldShowHidden
     private var currentPathPrefix = ""
     private val config = activity.config
     private val searchView = binding.folderSearchView
@@ -48,7 +47,7 @@ class PickDirectoryDialog(
 
         binding.directoriesFastscroller.updateColors(activity.getProperPrimaryColor())
 
-        configureSearchView()
+//        configureSearchView()
 
         val builder = activity.getAlertDialogBuilder()
             .setPositiveButton(com.simplemobiletools.commons.R.string.ok, null)
@@ -67,29 +66,21 @@ class PickDirectoryDialog(
         builder.apply {
             activity.setupDialogStuff(binding.root, this, com.simplemobiletools.commons.R.string.select_destination) { alertDialog ->
                 dialog = alertDialog
-                binding.directoriesShowHidden.beVisibleIf(!context.config.shouldShowHidden)
-                binding.directoriesShowHidden.setOnClickListener {
-                    activity.handleHiddenFolderPasswordProtection {
-                        binding.directoriesShowHidden.beGone()
-                        showHidden = true
-                        fetchDirectories(true)
-                    }
-                }
             }
         }
 
         fetchDirectories(false)
     }
 
-    private fun configureSearchView() = with(searchView) {
-        updateHintText(context.getString(com.simplemobiletools.commons.R.string.search_folders))
-        searchEditText.imeOptions = EditorInfo.IME_ACTION_DONE
-
-        toggleHideOnScroll(!config.scrollHorizontally)
-        setupMenu()
-        setSearchViewListeners()
-        updateSearchViewUi()
-    }
+//    private fun configureSearchView() = with(searchView) {
+//        updateHintText(context.getString(com.simplemobiletools.commons.R.string.search_folders))
+//        searchEditText.imeOptions = EditorInfo.IME_ACTION_DONE
+//
+//        toggleHideOnScroll(!config.scrollHorizontally)
+//        setupMenu()
+//        setSearchViewListeners()
+//        updateSearchViewUi()
+//    }
 
     private fun MySearchMenu.updateSearchViewUi() {
         getToolbar().beInvisible()
@@ -169,11 +160,11 @@ class PickDirectoryDialog(
         activity.hideKeyboard(searchEditText)
         FilePickerDialog(
             activity,
-            activity.getDefaultCopyDestinationPath(showHidden, sourcePath),
+            activity.getDefaultCopyDestinationPath(false, sourcePath),
             !isPickingCopyMoveDestination && !isPickingFolderForWidget,
-            showHidden,
-            true,
-            true
+            showHidden = false,
+            showFAB = true,
+            canAddShowHiddenButton = true
         ) {
             config.lastCopyPath = it
             activity.handleLockedFolderOpening(it) { success ->

@@ -61,16 +61,6 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getBoolean(HIDE_FOLDER_TOOLTIP_SHOWN, false)
         set(wasShown) = prefs.edit().putBoolean(HIDE_FOLDER_TOOLTIP_SHOWN, wasShown).apply()
 
-    var shouldShowHidden = showHiddenMedia || temporarilyShowHidden
-
-    var showHiddenMedia: Boolean
-        get() = prefs.getBoolean(SHOW_HIDDEN_MEDIA, false)
-        set(showHiddenFolders) = prefs.edit().putBoolean(SHOW_HIDDEN_MEDIA, showHiddenFolders).apply()
-
-    var temporarilyShowHidden: Boolean
-        get() = prefs.getBoolean(TEMPORARILY_SHOW_HIDDEN, false)
-        set(temporarilyShowHidden) = prefs.edit().putBoolean(TEMPORARILY_SHOW_HIDDEN, temporarilyShowHidden).apply()
-
     var temporarilyShowExcluded: Boolean
         get() = prefs.getBoolean(TEMPORARILY_SHOW_EXCLUDED, false)
         set(temporarilyShowExcluded) = prefs.edit().putBoolean(TEMPORARILY_SHOW_EXCLUDED, temporarilyShowExcluded).apply()
@@ -363,14 +353,6 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getString(LAST_FILEPICKER_PATH, "")!!
         set(lastFilepickerPath) = prefs.edit().putString(LAST_FILEPICKER_PATH, lastFilepickerPath).apply()
 
-    var tempSkipDeleteConfirmation: Boolean
-        get() = prefs.getBoolean(TEMP_SKIP_DELETE_CONFIRMATION, false)
-        set(tempSkipDeleteConfirmation) = prefs.edit().putBoolean(TEMP_SKIP_DELETE_CONFIRMATION, tempSkipDeleteConfirmation).apply()
-
-    var tempSkipRecycleBin: Boolean
-        get() = prefs.getBoolean(TEMP_SKIP_RECYCLE_BIN, false)
-        set(tempSkipRecycleBin) = prefs.edit().putBoolean(TEMP_SKIP_RECYCLE_BIN, tempSkipRecycleBin).apply()
-
     var wereFavoritesPinned: Boolean
         get() = prefs.getBoolean(WERE_FAVORITES_PINNED, false)
         set(wereFavoritesPinned) = prefs.edit().putBoolean(WERE_FAVORITES_PINNED, wereFavoritesPinned).apply()
@@ -386,10 +368,6 @@ class Config(context: Context) : BaseConfig(context) {
     var groupBy: Int
         get() = prefs.getInt(GROUP_BY, GROUP_BY_NONE)
         set(groupBy) = prefs.edit().putInt(GROUP_BY, groupBy).apply()
-
-    var useRecycleBin: Boolean
-        get() = prefs.getBoolean(USE_RECYCLE_BIN, true)
-        set(useRecycleBin) = prefs.edit().putBoolean(USE_RECYCLE_BIN, useRecycleBin).apply()
 
     var bottomActions: Boolean
         get() = prefs.getBoolean(BOTTOM_ACTIONS, true)

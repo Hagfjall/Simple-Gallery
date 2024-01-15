@@ -43,7 +43,7 @@ import com.simplemobiletools.gallery.pro.interfaces.DirectoryOperationsListener
 import com.simplemobiletools.gallery.pro.models.AlbumCover
 import com.simplemobiletools.gallery.pro.models.Directory
 import java.io.File
-import java.util.*
+import java.util.Collections
 
 class DirectoryAdapter(
     activity: BaseSimpleActivity, var dirs: ArrayList<Directory>, val listener: DirectoryOperationsListener?, recyclerView: MyRecyclerView,
@@ -105,22 +105,7 @@ class DirectoryAdapter(
 
         val isOneItemSelected = isOneItemSelected()
         menu.apply {
-            findItem(R.id.cab_move_to_top).isVisible = isDragAndDropping
-            findItem(R.id.cab_move_to_bottom).isVisible = isDragAndDropping
-
             findItem(R.id.cab_rename).isVisible = !selectedPaths.contains(FAVORITES) && !selectedPaths.contains(RECYCLE_BIN)
-            findItem(R.id.cab_change_cover_image).isVisible = isOneItemSelected
-
-            findItem(R.id.cab_lock).isVisible = selectedPaths.any { !config.isFolderProtected(it) }
-            findItem(R.id.cab_unlock).isVisible = selectedPaths.any { config.isFolderProtected(it) }
-
-            findItem(R.id.cab_empty_recycle_bin).isVisible = isOneItemSelected && selectedPaths.first() == RECYCLE_BIN
-            findItem(R.id.cab_empty_disable_recycle_bin).isVisible = isOneItemSelected && selectedPaths.first() == RECYCLE_BIN
-
-            findItem(R.id.cab_create_shortcut).isVisible = isOreoPlus() && isOneItemSelected
-
-            checkHideBtnVisibility(this, selectedPaths)
-            checkPinBtnVisibility(this, selectedPaths)
         }
     }
 
@@ -130,27 +115,12 @@ class DirectoryAdapter(
         }
 
         when (id) {
-            R.id.cab_move_to_top -> moveSelectedItemsToTop()
-            R.id.cab_move_to_bottom -> moveSelectedItemsToBottom()
             R.id.cab_properties -> showProperties()
             R.id.cab_rename -> renameDir()
-            R.id.cab_pin -> pinFolders(true)
-            R.id.cab_unpin -> pinFolders(false)
             R.id.cab_change_order -> changeOrder()
-            R.id.cab_empty_recycle_bin -> tryEmptyRecycleBin(true)
-            R.id.cab_empty_disable_recycle_bin -> emptyAndDisableRecycleBin()
-            R.id.cab_hide -> toggleFoldersVisibility(true)
-            R.id.cab_unhide -> toggleFoldersVisibility(false)
             R.id.cab_exclude -> tryExcludeFolder()
-            R.id.cab_lock -> tryLockFolder()
-            R.id.cab_unlock -> unlockFolder()
-            R.id.cab_copy_to -> copyFilesTo()
             R.id.cab_move_to -> moveFilesTo()
             R.id.cab_select_all -> selectAll()
-            R.id.cab_create_shortcut -> tryCreateShortcut()
-            R.id.cab_delete -> askConfirmDelete()
-            R.id.cab_select_photo -> tryChangeAlbumCover(false)
-            R.id.cab_use_default -> tryChangeAlbumCover(true)
         }
     }
 
@@ -183,56 +153,20 @@ class DirectoryAdapter(
         }
     }
 
-    private fun checkHideBtnVisibility(menu: Menu, selectedPaths: ArrayList<String>) {
-        menu.findItem(R.id.cab_hide).isVisible =
-            (!isRPlus() || isExternalStorageManager()) && selectedPaths.any { !it.doesThisOrParentHaveNoMedia(HashMap(), null) }
-
-        menu.findItem(R.id.cab_unhide).isVisible =
-            (!isRPlus() || isExternalStorageManager()) && selectedPaths.any { it.doesThisOrParentHaveNoMedia(HashMap(), null) }
-    }
-
-    private fun checkPinBtnVisibility(menu: Menu, selectedPaths: ArrayList<String>) {
-        val pinnedFolders = config.pinnedFolders
-        menu.findItem(R.id.cab_pin).isVisible = selectedPaths.any { !pinnedFolders.contains(it) }
-        menu.findItem(R.id.cab_unpin).isVisible = selectedPaths.any { pinnedFolders.contains(it) }
-    }
-
-    private fun moveSelectedItemsToTop() {
-        selectedKeys.reversed().forEach { key ->
-            val position = dirs.indexOfFirst { it.path.hashCode() == key }
-            val tempItem = dirs[position]
-            dirs.removeAt(position)
-            dirs.add(0, tempItem)
-        }
-
-        notifyDataSetChanged()
-    }
-
-    private fun moveSelectedItemsToBottom() {
-        selectedKeys.forEach { key ->
-            val position = dirs.indexOfFirst { it.path.hashCode() == key }
-            val tempItem = dirs[position]
-            dirs.removeAt(position)
-            dirs.add(dirs.size, tempItem)
-        }
-
-        notifyDataSetChanged()
-    }
-
     private fun showProperties() {
         if (selectedKeys.size <= 1) {
             val path = getFirstSelectedItemPath() ?: return
             if (path != FAVORITES && path != RECYCLE_BIN) {
                 activity.handleLockedFolderOpening(path) { success ->
                     if (success) {
-                        PropertiesDialog(activity, path, config.shouldShowHidden)
+                        PropertiesDialog(activity, path, false)
                     }
                 }
             }
         } else {
             PropertiesDialog(activity, getSelectedPaths().filter {
                 it != FAVORITES && it != RECYCLE_BIN && !config.isFolderProtected(it)
-            }.toMutableList(), config.shouldShowHidden)
+            }.toMutableList(), false)
         }
     }
 
@@ -307,7 +241,7 @@ class DirectoryAdapter(
                     if (success) {
                         if (path.containsNoMedia()) {
                             activity.removeNoMedia(path) {
-                                if (config.shouldShowHidden) {
+                                if (false) {
                                     updateFolderNames()
                                 } else {
                                     activity.runOnUiThread {
@@ -333,38 +267,6 @@ class DirectoryAdapter(
         }
     }
 
-    private fun tryEmptyRecycleBin(askConfirmation: Boolean) {
-        if (askConfirmation) {
-            activity.showRecycleBinEmptyingDialog {
-                emptyRecycleBin()
-            }
-        } else {
-            emptyRecycleBin()
-        }
-    }
-
-    private fun emptyRecycleBin() {
-        activity.handleLockedFolderOpening(RECYCLE_BIN) { success ->
-            if (success) {
-                activity.emptyTheRecycleBin {
-                    listener?.refreshItems()
-                }
-            }
-        }
-    }
-
-    private fun emptyAndDisableRecycleBin() {
-        activity.handleLockedFolderOpening(RECYCLE_BIN) { success ->
-            if (success) {
-                activity.showRecycleBinEmptyingDialog {
-                    activity.emptyAndDisableTheRecycleBin {
-                        listener?.refreshItems()
-                    }
-                }
-            }
-        }
-    }
-
     private fun updateFolderNames() {
         val includedFolders = config.includedFolders
         val hidden = activity.getString(R.string.hidden)
@@ -379,7 +281,7 @@ class DirectoryAdapter(
 
     private fun hideFolder(path: String) {
         activity.addNoMedia(path) {
-            if (config.shouldShowHidden) {
+            if (false) {
                 updateFolderNames()
             } else {
                 val affectedPositions = ArrayList<Int>()
@@ -518,7 +420,7 @@ class DirectoryAdapter(
 
     private fun copyMoveTo(selectedPaths: Collection<String>, isCopyOperation: Boolean) {
         val paths = ArrayList<String>()
-        val showHidden = config.shouldShowHidden
+        val showHidden = false
         selectedPaths.forEach {
             val filter = config.filterMedia
             File(it).listFiles()?.filter {
@@ -613,7 +515,7 @@ class DirectoryAdapter(
                 }
 
                 val fileDirItem = getFirstSelectedItem() ?: return
-                val baseString = if (!config.useRecycleBin || config.tempSkipRecycleBin || (isOneItemSelected() && fileDirItem.areFavorites())) {
+                val baseString = if (isOneItemSelected() && fileDirItem.areFavorites()) {
                     com.simplemobiletools.commons.R.string.deletion_confirmation
                 } else {
                     com.simplemobiletools.commons.R.string.move_to_recycle_bin_confirmation
@@ -647,23 +549,7 @@ class DirectoryAdapter(
 
                 var foldersToDelete = ArrayList<File>(selectedKeys.size)
                 selectedDirs.forEach {
-                    if (it.areFavorites() || it.isRecycleBin()) {
-                        if (it.isRecycleBin()) {
-                            tryEmptyRecycleBin(false)
-                        } else {
-                            ensureBackgroundThread {
-                                activity.mediaDB.clearFavorites()
-                                activity.favoritesDB.clearFavorites()
-                                listener?.refreshItems()
-                            }
-                        }
-
-                        if (selectedKeys.size == 1) {
-                            finishActMode()
-                        }
-                    } else {
-                        foldersToDelete.add(File(it.path))
-                    }
+                    foldersToDelete.add(File(it.path))
                 }
 
                 handleLockedFolderOpeningForFolders(foldersToDelete.map { it.absolutePath }) {

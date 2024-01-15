@@ -32,7 +32,6 @@ import com.simplemobiletools.gallery.pro.databinding.ActivityMainBinding
 import com.simplemobiletools.gallery.pro.dialogs.ChangeSortingDialog
 import com.simplemobiletools.gallery.pro.dialogs.ChangeViewTypeDialog
 import com.simplemobiletools.gallery.pro.dialogs.FilterMediaDialog
-import com.simplemobiletools.gallery.pro.dialogs.GrantAllFilesDialog
 import com.simplemobiletools.gallery.pro.extensions.*
 import com.simplemobiletools.gallery.pro.helpers.*
 import com.simplemobiletools.gallery.pro.interfaces.DirectoryOperationsListener
@@ -55,7 +54,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     private var mIsGetAnyContentIntent = false
     private var mIsSetWallpaperIntent = false
     private var mAllowPickingMultiple = false
-    private var mIsThirdPartyIntent = false
     private var mIsGettingDirs = false
     private var mLoadedInitialPhotos = false
     private var mWasProtectionHandled = false
@@ -70,7 +68,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     private var mDateFormat = ""
     private var mTimeFormat = ""
     private var mLastMediaHandler = Handler()
-    private var mTempShowHiddenHandler = Handler()
     private var mZoomListener: MyRecyclerView.MyZoomListener? = null
     private var mLastMediaFetcher: MediaFetcher? = null
     private var mDirs = ArrayList<Directory>()
@@ -91,12 +88,8 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         appLaunched(BuildConfig.APPLICATION_ID)
 
         if (savedInstanceState == null) {
-            config.temporarilyShowHidden = false
             config.temporarilyShowExcluded = false
-            config.tempSkipDeleteConfirmation = false
-            config.tempSkipRecycleBin = false
             removeTempFolder()
-            checkRecycleBinItems()
             startNewPhotoFetcher()
         }
 
@@ -107,8 +100,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         mIsGetAnyContentIntent = isGetAnyContentIntent(intent)
         mIsSetWallpaperIntent = isSetWallpaperIntent(intent)
         mAllowPickingMultiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-        mIsThirdPartyIntent = mIsPickImageIntent || mIsPickVideoIntent || mIsGetImageContentIntent || mIsGetVideoContentIntent ||
-            mIsGetAnyContentIntent || mIsSetWallpaperIntent
 
         setupOptionsMenu()
         refreshMenuItems()
@@ -184,7 +175,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
     override fun onStart() {
         super.onStart()
-        mTempShowHiddenHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onResume() {
@@ -259,27 +249,12 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
     override fun onStop() {
         super.onStop()
-
-        if (config.temporarilyShowHidden || config.tempSkipDeleteConfirmation || config.temporarilyShowExcluded) {
-            mTempShowHiddenHandler.postDelayed({
-                config.temporarilyShowHidden = false
-                config.temporarilyShowExcluded = false
-                config.tempSkipDeleteConfirmation = false
-                config.tempSkipRecycleBin = false
-            }, SHOW_TEMP_HIDDEN_DURATION)
-        } else {
-            mTempShowHiddenHandler.removeCallbacksAndMessages(null)
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (!isChangingConfigurations) {
-            config.temporarilyShowHidden = false
             config.temporarilyShowExcluded = false
-            config.tempSkipDeleteConfirmation = false
-            config.tempSkipRecycleBin = false
-            mTempShowHiddenHandler.removeCallbacksAndMessages(null)
             removeTempFolder()
             unregisterFileUpdateListener()
 
@@ -311,16 +286,15 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             if (requestCode == PICK_MEDIA && resultData != null) {
                 val resultIntent = Intent()
                 var resultUri: Uri? = null
-                if (mIsThirdPartyIntent) {
-                    when {
-                        intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true && intent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0 -> {
-                            resultUri = fillExtraOutput(resultData)
-                        }
-
-                        resultData.extras?.containsKey(PICKED_PATHS) == true -> fillPickedPaths(resultData, resultIntent)
-                        else -> fillIntentPath(resultData, resultIntent)
+                when {
+                    intent.extras?.containsKey(MediaStore.EXTRA_OUTPUT) == true && intent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0 -> {
+                        resultUri = fillExtraOutput(resultData)
                     }
+
+                    resultData.extras?.containsKey(PICKED_PATHS) == true -> fillPickedPaths(resultData, resultIntent)
+                    else -> fillIntentPath(resultData, resultIntent)
                 }
+
 
                 if (resultUri != null) {
                     resultIntent.data = resultUri
@@ -338,31 +312,14 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun refreshMenuItems() {
-        if (!mIsThirdPartyIntent) {
-            binding.mainMenu.getToolbar().menu.apply {
-                findItem(R.id.column_count).isVisible = config.viewTypeFolders == VIEW_TYPE_GRID
-                findItem(R.id.set_as_default_folder).isVisible = !config.defaultFolder.isEmpty()
-                findItem(R.id.open_recycle_bin).isVisible = config.useRecycleBin && !config.showRecycleBinAtFolders
-                findItem(R.id.more_apps_from_us).isVisible = !resources.getBoolean(com.simplemobiletools.commons.R.bool.hide_google_relations)
-            }
-        }
-
         binding.mainMenu.getToolbar().menu.apply {
-            findItem(R.id.temporarily_show_hidden).isVisible = !config.shouldShowHidden
-            findItem(R.id.stop_showing_hidden).isVisible = (!isRPlus() || isExternalStorageManager()) && config.temporarilyShowHidden
-
             findItem(R.id.temporarily_show_excluded).isVisible = !config.temporarilyShowExcluded
             findItem(R.id.stop_showing_excluded).isVisible = config.temporarilyShowExcluded
         }
     }
 
     private fun setupOptionsMenu() {
-        val menuId = if (mIsThirdPartyIntent) {
-            R.menu.menu_main_intent
-        } else {
-            R.menu.menu_main
-        }
-
+        val menuId = R.menu.menu_main
         binding.mainMenu.getToolbar().inflateMenu(menuId)
         binding.mainMenu.toggleHideOnScroll(!config.scrollHorizontally)
         binding.mainMenu.setupMenu()
@@ -383,17 +340,11 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             when (menuItem.itemId) {
                 R.id.sort -> showSortingDialog()
                 R.id.filter -> showFilterMediaDialog()
-                R.id.open_camera -> launchCamera()
                 R.id.show_all -> showAllMedia()
                 R.id.change_view_type -> changeViewType()
-                R.id.temporarily_show_hidden -> tryToggleTemporarilyShowHidden()
-                R.id.stop_showing_hidden -> tryToggleTemporarilyShowHidden()
                 R.id.temporarily_show_excluded -> tryToggleTemporarilyShowExcluded()
                 R.id.stop_showing_excluded -> tryToggleTemporarilyShowExcluded()
-                R.id.create_new_folder -> createNewFolder()
-                R.id.open_recycle_bin -> openRecycleBin()
                 R.id.column_count -> changeColumnCount()
-                R.id.set_as_default_folder -> setAsDefaultFolder()
                 R.id.more_apps_from_us -> launchMoreAppsFromUsIntent()
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
@@ -540,14 +491,14 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun launchSearchActivity() {
-        hideKeyboard()
-        Intent(this, SearchActivity::class.java).apply {
-            startActivity(this)
-        }
-
-        binding.mainMenu.postDelayed({
-            binding.mainMenu.closeSearch()
-        }, 500)
+//        hideKeyboard()
+//        Intent(this, SearchActivity::class.java).apply {
+//            startActivity(this)
+//        }
+//
+//        binding.mainMenu.postDelayed({
+//            binding.mainMenu.closeSearch()
+//        }, 500)
     }
 
     private fun showSortingDialog() {
@@ -578,14 +529,9 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         config.showAll = true
         Intent(this, MediaActivity::class.java).apply {
             putExtra(DIRECTORY, "")
-
-            if (mIsThirdPartyIntent) {
-                handleMediaIntent(this)
-            } else {
-                hideKeyboard()
-                startActivity(this)
-                finish()
-            }
+            hideKeyboard()
+            startActivity(this)
+            finish()
         }
     }
 
@@ -596,28 +542,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             binding.directoriesGrid.adapter = null
             setupAdapter(getRecyclerAdapter()?.dirs ?: mDirs)
         }
-    }
-
-    private fun tryToggleTemporarilyShowHidden() {
-        if (config.temporarilyShowHidden) {
-            toggleTemporarilyShowHidden(false)
-        } else {
-            if (isRPlus() && !isExternalStorageManager()) {
-                GrantAllFilesDialog(this)
-            } else {
-                handleHiddenFolderPasswordProtection {
-                    toggleTemporarilyShowHidden(true)
-                }
-            }
-        }
-    }
-
-    private fun toggleTemporarilyShowHidden(show: Boolean) {
-        mLoadedInitialPhotos = false
-        config.temporarilyShowHidden = show
-        binding.directoriesGrid.adapter = null
-        getDirectories()
-        refreshMenuItems()
     }
 
     private fun tryToggleTemporarilyShowExcluded() {
@@ -652,8 +576,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             }
 
             else -> {
-                val baseString =
-                    if (config.useRecycleBin && !config.tempSkipRecycleBin) com.simplemobiletools.commons.R.plurals.moving_items_into_bin else com.simplemobiletools.commons.R.plurals.delete_items
+                val baseString = com.simplemobiletools.commons.R.plurals.delete_items
                 val deletingItems = resources.getQuantityString(baseString, fileDirItems.size, fileDirItems.size)
                 toast(deletingItems)
             }
@@ -661,33 +584,15 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
 
         val itemsToDelete = ArrayList<FileDirItem>()
         val filter = config.filterMedia
-        val showHidden = config.shouldShowHidden
         fileDirItems.filter { it.isDirectory }.forEach {
             val files = File(it.path).listFiles()
-            files?.filter {
-                it.absolutePath.isMediaFile() && (showHidden || !it.name.startsWith('.')) &&
-                    ((it.isImageFast() && filter and TYPE_IMAGES != 0) ||
-                        (it.isVideoFast() && filter and TYPE_VIDEOS != 0) ||
-                        (it.isGif() && filter and TYPE_GIFS != 0) ||
-                        (it.isRawFast() && filter and TYPE_RAWS != 0) ||
-                        (it.isSvg() && filter and TYPE_SVGS != 0))
+            files?.filter { it2 ->
+                it2.absolutePath.isMediaFile() && (!it2.name.startsWith('.')) && ((it2.isImageFast() && filter and TYPE_IMAGES != 0) || (it2.isVideoFast() && filter and TYPE_VIDEOS != 0) || (it2.isGif() && filter and TYPE_GIFS != 0) || (it2.isRawFast() && filter and TYPE_RAWS != 0) || (it2.isSvg() && filter and TYPE_SVGS != 0))
             }?.mapTo(itemsToDelete) { it.toFileDirItem(applicationContext) }
         }
 
-        if (config.useRecycleBin && !config.tempSkipRecycleBin) {
-            val pathsToDelete = ArrayList<String>()
-            itemsToDelete.mapTo(pathsToDelete) { it.path }
+        deleteFilteredFileDirItems(itemsToDelete, folders)
 
-            movePathsInRecycleBin(pathsToDelete) {
-                if (it) {
-                    deleteFilteredFileDirItems(itemsToDelete, folders)
-                } else {
-                    toast(com.simplemobiletools.commons.R.string.unknown_error_occurred)
-                }
-            }
-        } else {
-            deleteFilteredFileDirItems(itemsToDelete, folders)
-        }
     }
 
     private fun deleteFilteredFileDirItems(fileDirItems: ArrayList<FileDirItem>, folders: ArrayList<File>) {
@@ -769,7 +674,7 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
     }
 
     private fun createNewFolder() {
-        FilePickerDialog(this, internalStoragePath, false, config.shouldShowHidden, false, true) {
+        FilePickerDialog(this, internalStoragePath, false, false, false, true) {
             CreateNewFolderDialog(this, it) {
                 config.tempFolderPath = it
                 ensureBackgroundThread {
@@ -917,11 +822,9 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         mShouldStopFetching = false
 
         // if hidden item showing is disabled but all Favorite items are hidden, hide the Favorites folder
-        if (!config.shouldShowHidden) {
-            val favoritesFolder = newDirs.firstOrNull { it.areFavorites() }
-            if (favoritesFolder != null && favoritesFolder.tmb.getFilenameFromPath().startsWith('.')) {
-                newDirs.remove(favoritesFolder)
-            }
+        val favoritesFolder = newDirs.firstOrNull { it.areFavorites() }
+        if (favoritesFolder != null && favoritesFolder.tmb.getFilenameFromPath().startsWith('.')) {
+            newDirs.remove(favoritesFolder)
         }
 
         val dirs = getSortedDirectories(newDirs)
@@ -1181,11 +1084,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
         mDirs = dirs.clone() as ArrayList<Directory>
     }
 
-    private fun setAsDefaultFolder() {
-        config.defaultFolder = ""
-        refreshMenuItems()
-    }
-
     private fun openDefaultFolder() {
         if (config.defaultFolder.isEmpty()) {
             return
@@ -1331,16 +1229,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
             }
         }
 
-        if (config.useRecycleBin) {
-            try {
-                val binFolder = dirs.firstOrNull { it.path == RECYCLE_BIN }
-                if (binFolder != null && mediaDB.getDeletedMedia().isEmpty()) {
-                    invalidDirs.add(binFolder)
-                }
-            } catch (ignored: Exception) {
-            }
-        }
-
         if (invalidDirs.isNotEmpty()) {
             dirs.removeAll(invalidDirs)
             setupAdapter(dirs)
@@ -1385,25 +1273,6 @@ class MainActivity : SimpleActivity(), DirectoryOperationsListener {
                 }
             }
         }, LAST_MEDIA_CHECK_PERIOD)
-    }
-
-    private fun checkRecycleBinItems() {
-        if (config.useRecycleBin && config.lastBinCheck < System.currentTimeMillis() - DAY_SECONDS * 1000) {
-            config.lastBinCheck = System.currentTimeMillis()
-            Handler().postDelayed({
-                ensureBackgroundThread {
-                    try {
-                        val filesToDelete = mediaDB.getOldRecycleBinItems(System.currentTimeMillis() - MONTH_MILLISECONDS)
-                        filesToDelete.forEach {
-                            if (File(it.path.replaceFirst(RECYCLE_BIN, recycleBinPath)).delete()) {
-                                mediaDB.deleteMediumPath(it.path)
-                            }
-                        }
-                    } catch (e: Exception) {
-                    }
-                }
-            }, 3000L)
-        }
     }
 
     // exclude probably unwanted folders, for example facebook stickers are split between hundreds of separate folders like
