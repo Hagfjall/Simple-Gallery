@@ -5,10 +5,12 @@ imgly = "10.7.3"
 kotlin = "1.9.22"
 #KSP
 ksp = "1.9.22-1.0.16"
+#hilt
+hilt = "2.44"
 #AndroidX
 androidx-swiperefreshlayout = "1.1.0"
 androidx-constraintlayout = "2.1.4"
-androidx-composeruntime="1.5.4"
+androidx-composeruntime = "1.5.4"
 #exif
 exif = "1.0.1"
 #Room
@@ -46,6 +48,9 @@ app-version-versionCode = "396"
 app-version-versionName = "6.28.1"
 subsamplingScaleImageView = "80efdaa570"
 [libraries]
+#hilt
+hilt = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
 #AndroidX
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "androidx-swiperefreshlayout" }
@@ -85,4 +90,5 @@ room = [
 android = { id = "com.android.application", version.ref = "gradlePlugins-agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 imgly = { id = "ly.img.android.sdk", version.ref = "imgly" }

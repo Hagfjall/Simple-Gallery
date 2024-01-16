@@ -54,21 +54,8 @@ fun Activity.shareMediumPath(path: String) {
     sharePath(path)
 }
 
-fun Activity.shareMediaPaths(paths: ArrayList<String>) {
-    sharePaths(paths)
-}
-
-fun Activity.setAs(path: String) {
-    setAsIntent(path, BuildConfig.APPLICATION_ID)
-}
-
 fun Activity.openPath(path: String, forceChooser: Boolean, extras: HashMap<String, Boolean> = HashMap()) {
     openPathIntent(path, forceChooser, BuildConfig.APPLICATION_ID, extras = extras)
-}
-
-fun Activity.openEditor(path: String, forceChooser: Boolean = false) {
-    val newPath = path.removePrefix("file://")
-    openEditorIntent(newPath, forceChooser, BuildConfig.APPLICATION_ID)
 }
 
 fun SimpleActivity.launchSettings() {
@@ -251,32 +238,6 @@ fun BaseSimpleActivity.removeNoMedia(path: String, callback: (() -> Unit)? = nul
             } else {
                 rescanFolderMedia(path)
             }
-        }
-    }
-}
-
-fun BaseSimpleActivity.toggleFileVisibility(oldPath: String, hide: Boolean, callback: ((newPath: String) -> Unit)? = null) {
-    val path = oldPath.getParentPath()
-    var filename = oldPath.getFilenameFromPath()
-    if ((hide && filename.startsWith('.')) || (!hide && !filename.startsWith('.'))) {
-        callback?.invoke(oldPath)
-        return
-    }
-
-    filename = if (hide) {
-        ".${filename.trimStart('.')}"
-    } else {
-        filename.substring(1, filename.length)
-    }
-
-    val newPath = "$path/$filename"
-    renameFile(oldPath, newPath, false) { success, useAndroid30Way ->
-        runOnUiThread {
-            callback?.invoke(newPath)
-        }
-
-        ensureBackgroundThread {
-            updateDBMediaPath(oldPath, newPath)
         }
     }
 }

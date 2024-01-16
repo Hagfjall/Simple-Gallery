@@ -5,6 +5,8 @@ import java.io.FileInputStream
 val isProprietary = gradle.startParameter.taskNames.any { task -> task.contains("Proprietary") }
 
 plugins {
+    kotlin("kapt")
+    alias(libs.plugins.hilt)
     alias(libs.plugins.android)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.ksp)
@@ -18,8 +20,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    compileSdk = project.libs.versions.app.build.compileSDKVersion.get().toInt()
 
+    compileSdkVersion(project.libs.versions.app.build.compileSDKVersion.get().toInt())
     defaultConfig {
         applicationId = libs.versions.app.version.appId.get()
         minSdk = project.libs.versions.app.build.minimumSDK.get().toInt()
@@ -82,6 +84,10 @@ android {
         targetCompatibility = currentJavaVersionFromLibs
     }
 
+//    kotlin {
+//        jvmToolchain(1.8)
+//    }
+
     tasks.withType<KotlinCompile> {
         kotlinOptions.jvmTarget = project.libs.versions.app.build.kotlinJVMTarget.get()
     }
@@ -93,7 +99,7 @@ android {
         abortOnError = false
     }
 
-    packagingOptions {
+    packaging {
         resources {
             excludes += "META-INF/library_release.kotlin_module"
         }
@@ -101,24 +107,26 @@ android {
 }
 
 dependencies {
-    implementation(libs.simple.tools.commons)
-    implementation(libs.android.image.cropper)
-    implementation(libs.exif)
     implementation(libs.android.gif.drawable)
-    implementation(libs.androidx.constraintlayout)
+    implementation(libs.android.image.cropper)
+    implementation(libs.androidsvg.aar)
     implementation(libs.androidx.composeruntime)
+    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.apng)
+    implementation(libs.awebp)
+    implementation(libs.exif)
+    implementation(libs.gestureviews)
+    implementation(libs.hilt)
+    kapt(libs.hilt.compiler)
+    implementation(libs.imagefilters)
+    implementation(libs.okio)
+    implementation(libs.sanselan)
     implementation(libs.sdk.panowidget)
     implementation(libs.sdk.videowidget)
-    implementation(libs.sanselan)
-    implementation(libs.imagefilters)
-    implementation(libs.androidsvg.aar)
-    implementation(libs.gestureviews)
+    implementation(libs.simple.tools.commons)
     implementation(libs.subsamplingscaleimageview)
-    implementation(libs.androidx.swiperefreshlayout)
-    implementation(libs.awebp)
-    implementation(libs.apng)
-    implementation(libs.okio)
     implementation(libs.picasso) {
         exclude(group = "com.squareup.okhttp3", module = "okhttp")
     }
@@ -130,6 +138,10 @@ dependencies {
     implementation(libs.bundles.room)
     ksp(libs.androidx.room.compiler)
 }
+// Allow references to generated code
+//kapt {
+//    correctErrorTypes = true
+//}
 
 // Apply the PESDKPlugin
 if (isProprietary) {
